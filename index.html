@@ -1,130 +1,16 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>AU Fire Risk Tracker</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        body { font-family: -apple-system, sans-serif; padding: 15px; background: #f0f0f0; color: #333; }
-        .card { background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); margin-bottom: 15px; }
-        .danger { background: #d32f2f; color: white; font-weight: bold; padding: 15px; border-radius: 8px; display: none; margin-bottom: 15px; }
-        input { padding: 8px; width: 80px; border: 1px solid #ccc; border-radius: 4px; }
-        button { padding: 8px 15px; background: #007aff; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
-        pre { background: #333; color: #0f0; padding: 10px; font-size: 11px; border-radius: 5px; overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; font-size: 13px; }
-        th, td { text-align: left; padding: 8px; border-bottom: 1px solid #eee; }
-    </style>
-</head>
-<body>
-
-    <div class="card">
-        <h3>📍 Location Settings</h3>
-        Lat: <input id="lat" placeholder="-37.81"> 
-        Lon: <input id="lon" placeholder="144.96">
-        <div style="margin-top:10px;">
-            <button onclick="fetchWeather()">Update Data</button>
-            <button onclick="getGPS()" style="background:#34c759">GPS</button>
-        </div>
-        <p id="msg" style="font-size:12px; color:#666; margin-top:10px;">Enter coordinates or use GPS.</p>
-    </div>
-
-    <div id="warnBox" class="danger">⚠️ EXTREME FIRE WEATHER DETECTED</div>
-
-    <div class="card">
-        <h3>📅 7-Day Risk Outlook</h3>
-        <table id="resultsTable">
-            <thead>
-                <tr><th>Day</th><th>Temp</th><th>Wind</th><th>Risk</th></tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-    </div>
-
-    <div style="text-align:center">
-        <button onclick="toggleDebug()" style="background:#666; font-size:10px;">Toggle Debug Log</button>
-    </div>
-    <div id="debug" style="display:none; margin-top:10px;">
-        <pre id="log">Debug Log Initialized...</pre>
-    </div>
-
-<script>
-    const log = (m) => document.getElementById('log').innerText += "\n" + m;
-    
-    function getGPS() {
-        document.getElementById('msg').innerText = "Locating...";
-        navigator.geolocation.getCurrentPosition(p => {
-            document.getElementById('lat').value = p.coords.latitude.toFixed(3);
-            document.getElementById('lon').value = p.coords.longitude.toFixed(3);
-            fetchWeather();
-        }, (e) => { 
-            document.getElementById('msg').innerText = "GPS Error: " + e.message;
-        });
-    }
-
-    async function fetchWeather() {
-        const lat = document.getElementById('lat').value;
-        const lon = document.getElementById('lon').value;
-        const msg = document.getElementById('msg');
-        const tbody = document.querySelector('#resultsTable tbody');
-        const warn = document.getElementById('warnBox');
-
-        if(!lat || !lon) { msg.innerText = "Error: Need Coordinates"; return; }
-
-        msg.innerText = "Connecting to API...";
-        tbody.innerHTML = "";
-        warn.style.display = 'none';
-
-        try {
-            // Using standard variables: Max Temp, Max Wind Gusts, Min Humidity
-            const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&daily=temperature_2m_max,wind_gusts_10m_max&timezone=auto`;
-            log("Fetching: " + url);
-            
-            const res = await fetch(url);
-            const data = await res.json();
-            log("Received Response.");
-
-            if(!data.daily) {
-                log("Raw Data: " + JSON.stringify(data));
-                throw new Error("Missing Daily Data");
-            }
-
-            data.daily.time.forEach((date, i) => {
-                const temp = data.daily.temperature_2m_max[i];
-                const wind = data.daily.wind_gusts_10m_max[i];
-                const day = date.split('-')[2] + "/" + date.split('-')[1];
-
-                // Simple Fire Risk Logic (Rough Proxy for Australia)
-                // If Temp > 35 and Wind > 40 = Very High/Extreme
-                let risk = "Low";
-                let color = "inherit";
-
-                if (temp > 40 || (temp > 35 && wind > 60)) { 
-                    risk = "EXTREME"; color = "red"; 
-                    if(i===0) warn.style.display = 'block';
-                }
-                else if (temp > 30 && wind > 30) { risk = "High"; color = "orange"; }
-                else if (temp > 25) { risk = "Moderate"; }
-
-                const row = `<tr>
-                    <td>${day}</td>
-                    <td>${temp}°C</td>
-                    <td>${wind}km/h</td>
-                    <td style="color:${color}; font-weight:bold">${risk}</td>
-                </tr>`;
-                tbody.innerHTML += row;
-            });
-
-            msg.innerText = "Updated: " + new Date().toLocaleTimeString();
-
-        } catch (e) {
-            msg.innerText = "Error: Check Debug Log";
-            log("ERROR: " + e.message);
-        }
-    }
-
-    function toggleDebug() {
-        const d = document.getElementById('debug');
-        d.style.display = d.style.display === 'none' ? 'block' : 'none';
-    }
+<title>TFB</title><body style="font-family:sans-serif;text-align:center"><b>TOTAL FIRE BAN?</b><br><input id=A size=5><input id=B size=5><br><button onclick=g()>Check</button><button onclick=n()>GPS</button><p id=M>...</p><h1 id=R></h1><pre id=D style="font-size:10px"></pre><script>
+L=localStorage;A.value=L.a||'';B.value=L.b||'';
+n=()=>navigator.geolocation.getCurrentPosition(p=>{A.value=p.coords.latitude.toFixed(2);B.value=p.coords.longitude.toFixed(2);g()},()=>M.innerText='GPS X');
+g=async(x,y)=>{
+L.a=x=A.value;L.b=y=B.value;M.innerText='Syncing...';
+try{
+j=await(await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${x}&longitude=${y}&daily=fire_danger_index&timezone=auto`)).json();
+f=j.daily.fire_danger_index[0];
+b=f>=50;
+R.innerText=b?'🔥 YES':'✅ NO';
+R.style.color=b?'red':'green';
+M.innerText=`Current Index: ${Math.round(f)}`;
+D.innerText=`7-Day Risk Index:\n${j.daily.fire_danger_index.map((v,i)=>j.daily.time[i].slice(8)+': '+Math.round(v)).join('\n')}`;
+L.j=JSON.stringify(j)}catch(e){M.innerText='Err: API Offline'}
+};if(L.a)g();
 </script>
-</body>
-</html>
