@@ -1,1 +1,108 @@
-<title>AU_WX</title><b>AU EMERGENCY</b><br><input id=A size=2><input id=B size=2><button onclick=g()>Go</button><button onclick=n()>GPS</button><p id=M style=margin:2px></p><div id=W style=font-size:11px;color:red;font-weight:700></div><pre id=O style=font-size:10px;margin:0></pre><div style=font-size:9px;color:#666>0:MOD 24:HIGH 50:EXTR 100:CATA</div><script>L=localStorage;A.value=L.a||'';B.value=L.b||'';R=(j,u,d)=>{M.innerText=`${u?'OK':'Last'}|${u||L.u||''}`;d=j.daily;f=d.fire_danger_index[0];v=f>=100?'CATASTROPHIC':f>=50?'EXTREME':f>=24?'HIGH':'MODERATE';W.innerHTML=f>=50?`!!! ${v} !!!`:`Rating: ${v}`;O.innerText='7-DAY FIRE OUTLOOK\nDATE  IDX  RTG\n';d.time.map((t,i)=>{x=d.fire_danger_index[i];z=x>=100?'CATA':x>=50?'EXTR':x>=24?'HIGH':'MOD';O.innerText+=`${t.slice(8,10)}    ${Math.round(x)}   ${z}\n`})};if(L.j)R(JSON.parse(L.j),0);n=()=>navigator.geolocation.getCurrentPosition(p=>{A.value=p.coords.latitude.toFixed(2);B.value=p.coords.longitude.toFixed(2);g()},()=>M.innerText='X');g=async(x,y)=>{L.a=x=A.value;L.b=y=B.value;M.innerText='...';const c=new AbortController(),t=setTimeout(()=>c.abort(),9000);try{j=await(await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${x}&longitude=${y}&daily=fire_danger_index&timezone=auto`,{signal:c.signal})).json();clearTimeout(t);L.u=u=new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});L.j=JSON.stringify(j);R(j,u)}catch(e){M.innerText='Err' }};</script>
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AU Emergency Check</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: sans-serif; line-height: 1.4; padding: 10px; background: #f4f4f4; }
+        .box { background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 10px; }
+        .warn { color: white; background: #d32f2f; padding: 10px; border-radius: 4px; font-weight: bold; display: none; }
+        pre { background: #eee; padding: 5px; font-size: 12px; overflow-x: auto; }
+        input { width: 60px; }
+    </style>
+</head>
+<body>
+
+    <div class="box">
+        <b>AU Fire & Heat Risk</b><br>
+        Lat: <input id="lat" type="text"> 
+        Lon: <input id="lon" type="text">
+        <button onclick="fetchData()">Go</button>
+        <button onclick="getLocation()">GPS</button>
+        <p id="status" style="margin:5px 0; font-size: 12px;"></p>
+    </div>
+
+    <div id="alertBox" class="warn"></div>
+
+    <div class="box">
+        <pre id="output">No data loaded.</pre>
+    </div>
+
+    <div style="font-size:10px; color:#666;">
+        <b>AFDRS Index:</b> 0-23: Mod | 24-49: High | 50-99: Extreme | 100+: Catastrophic
+    </div>
+
+<script>
+    const storage = localStorage;
+    const latInput = document.getElementById('lat');
+    const lonInput = document.getElementById('lon');
+    const status = document.getElementById('status');
+    const output = document.getElementById('output');
+    const alertBox = document.getElementById('alertBox');
+
+    // Load saved coords
+    latInput.value = storage.getItem('last_lat') || '';
+    lonInput.value = storage.getItem('last_lon') || '';
+
+    function getLocation() {
+        status.innerText = "Locating...";
+        navigator.geolocation.getCurrentPosition(pos => {
+            latInput.value = pos.coords.latitude.toFixed(2);
+            lonInput.value = pos.coords.longitude.toFixed(2);
+            fetchData();
+        }, () => { status.innerText = "GPS Error"; });
+    }
+
+    async function fetchData() {
+        const x = latInput.value;
+        const y = lonInput.value;
+        if(!x || !y) return status.innerText = "Need Coords";
+
+        // Save coords
+        storage.setItem('last_lat', x);
+        storage.setItem('last_lon', y);
+        status.innerText = "Fetching...";
+        alertBox.style.display = 'none';
+
+        try {
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${x}&longitude=${y}&daily=fire_danger_index,temperature_2m_max&timezone=auto`;
+            const response = await fetch(url);
+            const data = await response.json();
+
+            if(!data.daily) throw new Error("Invalid API Response");
+
+            render(data);
+            status.innerText = "Updated: " + new Date().toLocaleTimeString();
+        } catch (e) {
+            status.innerText = "Error: " + e.message;
+        }
+    }
+
+    function render(data) {
+        const daily = data.daily;
+        let text = "7-DAY OUTLOOK\nDATE    IDX    TEMP    RATING\n------------------------------\n";
+        
+        daily.time.forEach((date, i) => {
+            const fwi = Math.round(daily.fire_danger_index[i]);
+            const temp = Math.round(daily.temperature_2m_max[i]);
+            const day = date.split('-')[2];
+
+            let rating = "MOD";
+            if(fwi >= 100) rating = "CATASTROPHIC";
+            else if(fwi >= 50) rating = "EXTREME";
+            else if(fwi >= 24) rating = "HIGH";
+
+            text += `${day}      ${fwi.toString().padEnd(3)}    ${temp}°C    ${rating}\n`;
+
+            // Trigger alert if today is Extreme or higher
+            if(i === 0 && fwi >= 50) {
+                alertBox.innerText = `⚠️ DANGER: ${rating} FIRE RISK TODAY`;
+                alertBox.style.display = 'block';
+            }
+        });
+
+        output.innerText = text;
+    }
+</script>
+</body>
+</html>
