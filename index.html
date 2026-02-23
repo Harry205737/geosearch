@@ -1,16 +1,19 @@
-<title>TFB</title><body style="font-family:sans-serif;text-align:center"><b>TOTAL FIRE BAN?</b><br><input id=A size=5><input id=B size=5><br><button onclick=g()>Check</button><button onclick=n()>GPS</button><p id=M>...</p><h1 id=R></h1><pre id=D style="font-size:10px"></pre><script>
-L=localStorage;A.value=L.a||'';B.value=L.b||'';
-n=()=>navigator.geolocation.getCurrentPosition(p=>{A.value=p.coords.latitude.toFixed(2);B.value=p.coords.longitude.toFixed(2);g()},()=>M.innerText='GPS X');
-g=async(x,y)=>{
-L.a=x=A.value;L.b=y=B.value;M.innerText='Syncing...';
-try{
-j=await(await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${x}&longitude=${y}&daily=fire_danger_index&timezone=auto`)).json();
-f=j.daily.fire_danger_index[0];
-b=f>=50;
-R.innerText=b?'🔥 YES':'✅ NO';
-R.style.color=b?'red':'green';
-M.innerText=`Current Index: ${Math.round(f)}`;
-D.innerText=`7-Day Risk Index:\n${j.daily.fire_danger_index.map((v,i)=>j.daily.time[i].slice(8)+': '+Math.round(v)).join('\n')}`;
-L.j=JSON.stringify(j)}catch(e){M.innerText='Err: API Offline'}
-};if(L.a)g();
+<title>GEO</title><body style="font-family:sans-serif;padding:10px"><b>PLACE TO COORDS</b><br>
+<input id="Q" placeholder="Town/Place" style="width:70%"><button onclick="S()">Go</button>
+<hr><p id="M">Enter name and search</p>
+<div id="R" style="font-size:13px"></div><script>
+S=async()=>{
+  q=Q.value; M.innerText='Searching...'; R.innerHTML='';
+  try {
+    j=await(await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${q}&count=5`)).json();
+    if(!j.results) {M.innerText='No results'; return;}
+    M.innerText='Top Results:';
+    j.results.map(p=>{
+      R.innerHTML+=`<div style="margin-bottom:8px;border-bottom:1px dashed #ccc">
+      <b>${p.name}</b>, ${p.admin1||''} (${p.country_code})<br>
+      <code style="background:#eee">Lat: ${p.latitude.toFixed(3)} Lon: ${p.longitude.toFixed(3)}</code><br>
+      <small>Elev: ${p.elevation}m</small></div>`
+    });
+  } catch(e) {M.innerText='Err: Offline'}
+};
 </script>
